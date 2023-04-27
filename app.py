@@ -8,8 +8,11 @@ import time
 
 DIRECTIONS = ["n", "s", "e", "w", "ne", "nw", "se", "sw"]
 
+def asset(filename):
+    return os.path.join("assets", filename)
+
 def load_image(filename):
-    return pygame.image.load(os.path.join("assets", filename))
+    return pygame.image.load(asset(filename))
 
 
 class App:
@@ -17,19 +20,35 @@ class App:
         self.run_dir = os.path.dirname(__file__)
         os.chdir(self.run_dir)
 
+        self.width = 960
+        self.height = 720
+        self.size = self.width, self.height
+
         self.speed = 60
-
-        self.size = self.width, self.height = 960, 720
-
         self.move_step = 10
+
+    def check_events(self):
+        for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+                elif event.type == pygame.KEYDOWN:
+                    if event.key:
+                        return event.key
 
     def main(self):
         pygame.init()
 
-        logo = load_image("catsmirk.png")
-        pygame.display.set_icon(logo)
+        self.logo = load_image("catsmirk.png")
+        pygame.display.set_icon(self.logo)
         pygame.display.set_caption("minimal program")
      
+        self.font = pygame.font.Font(asset("alagard.ttf"), 14)
+
+        self.text_welcome = Text(self, content="Welcome", pos=(50, 50))
+        self.text_newgame = Text(self, content="New Game", pos=(50, 50))
+        self.text_options = Text(self, content="Options", pos=(50, 50))
+
         self.screen = pygame.display.set_mode(self.size)
         
         self.sprites = []
@@ -40,20 +59,29 @@ class App:
             vel_x = random.randint(-10, 10)
             vel_y = random.randint(-10, 10)
 
-            projectile = Projectile(self, "catsmirk.png", pos=(x, y), velocity=(vel_x, vel_y), bounce=True)
+            projectile = Projectile(self, image="catsmirk.png", pos=(x, y), velocity=(vel_x, vel_y), bounce=True)
 
             self.sprites.append(projectile)
         
+        self.loop = self.scn_menu
+
         self.running = True
 
         # GAME LOOP
         while self.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
+            key = self.check_events()
 
-            # game logic below here
-            self.action()
+            self.loop(key)
+
+            pygame.display.flip()
+
+            time.sleep(1 / self.speed)
+
+    def scn_menu(self, key):
+        self.screen.fill((64, 0, 0))
+        self.screen.fill((128, 0, 0), rect=(200, 70, 50, self.height-120))
+
+        self.text_welcome.blit()
 
     def scn_cats(self):
         self.screen.fill((64, 0, 0))
@@ -63,18 +91,37 @@ class App:
                 sprite.step()
 
             sprite.blit()
+        
 
-        pygame.display.flip()
-
-        time.sleep(1 / self.speed)
-
-
-class Sprite:
-    def  __init__(self, app: App, image_file: str, *, pos: tuple = (1, 1)):
+class Positional:
+    def __init__(self, app: App, *, pos: tuple = (1, 1)):
         self.app = app
         self.x, self.y = pos
 
-        self.image = load_image(image_file)
+    def blit(self):
+        self.app.screen.blit(self.object, (self.x, self.y))
+
+
+class Text(Positional):
+    def __init__(self, *args, content: str, color: tuple = None, background: tuple = None, font: pygame.font.Font = None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if not color:
+            color = (30, 10, 100)
+
+        if font:
+            self.font = font
+        else:
+            self.font = self.app.font
+
+        self.object = self.font.render(content, True, color, background)
+
+
+class Sprite(Positional):
+    def  __init__(self, *args, image: str, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.object = self.image = load_image(image)
 
         self.width = self.image.get_width()
         self.height = self.image.get_height()
@@ -94,13 +141,11 @@ class Sprite:
         elif self.y > self.max_y:
             self.y = self.max_y
 
-    def blit(self):
-        self.app.screen.blit(self.image, (self.x, self.y))
-
 
 class Projectile(Sprite):
     def __init__(self, *args, velocity: tuple, bounce: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.vel_x, self.vel_y = velocity
         self.vel_x_start, self.vel_y_start = self.vel_x, self.vel_y
         self.bounce = bounce
