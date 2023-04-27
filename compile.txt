@@ -1,0 +1,2 @@
+WIN: python -m PyInstaller ../app.py --onefile --add-data ../assets;assets -i ../assets/images/catsmirk.png
+LIN: pyinstaller ../app.py --onefile --add-data ../assets:assets -i ../assets/images/catsmirk.png
