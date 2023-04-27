@@ -1,19 +1,18 @@
 import pygame
 import os
 import random
-import time
 
 # tutorial used: https://dr0id.bitbucket.io/legacy/pygame_tutorials.html
 # this game is (c) 2023 by weirdcease
 
 DIRECTIONS = ["n", "s", "e", "w", "ne", "nw", "se", "sw"]
-LIFESQUARE = True
+SHOW_FPS = True
 
-def asset(filename):
-    return os.path.join("assets", filename)
+def asset(*partial_path):
+    return os.path.join("assets", *partial_path)
 
 def load_image(filename):
-    return pygame.image.load(asset(filename))
+    return pygame.image.load(asset("images", filename))
 
 
 class App:
@@ -40,28 +39,35 @@ class App:
                     if event.key:
                         return event.key
 
-    def get_text(self, content: str, color: tuple = None, background: tuple = None, font: pygame.font.Font = None):
+    def get_text(self, content: str, color: tuple = None, background: tuple = None, font: pygame.font.Font = None, persist: bool = True):
         for text in self.texts:
             if text.content == content and ((not color) or text.color == color) and ((not background) or text.background == background) and ((not font) or text.font == font):
                 return text
             
         new_text = Text(self, content, color=color, background=background, font=font)
-        self.texts.append(new_text)
+        if persist:
+            self.texts.append(new_text)
         return new_text
 
     def main(self):
         pygame.init()
+        pygame.mixer.init()
 
         self.logo = load_image("catsmirk.png")
         pygame.display.set_icon(self.logo)
         pygame.display.set_caption("minimal program")
      
         self.screen = pygame.display.set_mode(self.size)
+        self.clock = pygame.time.Clock()
+        
+        # load assets
+        self.font = pygame.font.Font(asset("fonts", "alagard.ttf"), 50)
+        self.mono = pygame.font.Font(asset("fonts", "ubuntu_mono_bold.ttf"), 30)
+        self.sound_menu = pygame.mixer.Sound(asset("sounds", "menu.mp3"))
+        self.sound_gong = pygame.mixer.Sound(asset("sounds", "gong.mp3"))
+        self.sound_bonk = pygame.mixer.Sound(asset("sounds", "bonk.mp3"))
+        self.sound_bonk.set_volume(0.5)
 
-        self.font = pygame.font.Font(asset("alagard.ttf"), 50)
-        
-        self.loop = self.main_menu
-        
         # set scenes as non-initialized
         self.init_cats = False
 
@@ -70,24 +76,24 @@ class App:
         self.initialized = []
         self.times = []
 
+        self.loop = self.main_menu
         self.running = True
+        self.sound_menu.play()
 
         # GAME LOOP
         while self.running:
             key = self.check_events()
-            if key: print(f"{key} pressed!")
 
             self.loop(key)
 
-            if LIFESQUARE:
-                self.screen.fill(tuple([random.randint(0, 255) for i in range(3)]), rect=(self.width-30, self.height-30, 20, 20))
+            if SHOW_FPS:
+                fps = int(self.clock.get_fps())
+                color = tuple([random.randint(0, 255) for i in range(3)])
+                fps_text = self.mono.render(str(fps), True, color, (0, 0, 0))
+                self.screen.blit(fps_text, (self.width-40, self.height-40))
 
+            self.clock.tick(60)
             pygame.display.flip()
-
-            if len(self.times) > 10:
-                self.times.pop(1)
-            self.times.append(time.time())
-            time.sleep(1 / self.speed)
 
     def opt_quit(self, key):
         self.running = False
@@ -97,16 +103,20 @@ class App:
         menu_funcs = [None, None, None, self.scn_cats, self.opt_quit]
 
         if key == pygame.K_DOWN: 
+            self.sound_bonk.play()
             self.menu_index += 1
         elif key == pygame.K_UP: 
+            self.sound_bonk.play()
             self.menu_index -= 1
         elif key == pygame.K_RETURN:
+            self.sound_gong.play()
+            self.sound_menu.fadeout(2)
             self.loop = menu_funcs[self.menu_index]
             self.menu_index = 0
         
-        if self.menu_index > len(menu_items) - 1: 
+        if self.menu_index > len(menu_items) - 1:
             self.menu_index = 0
-        elif self.menu_index < 0: 
+        elif self.menu_index < 0:
             self.menu_index = len(menu_items) - 1
 
         self.screen.fill((64, 0, 0))
@@ -124,6 +134,10 @@ class App:
             text.blit((70, 70 + 30 * i))
 
     def scn_cats(self, key):
+        if key == pygame.K_ESCAPE:
+            self.loop = self.main_menu
+            return
+
         if not self.init_cats:
             for i in range(200):
                 x = random.randint(100, self.width-100)
