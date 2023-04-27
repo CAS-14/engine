@@ -1,6 +1,7 @@
 import pygame
-import os
 import random
+import sys
+import os
 
 # tutorial used: https://dr0id.bitbucket.io/legacy/pygame_tutorials.html
 # this game is (c) 2023 by weirdcease
@@ -9,7 +10,12 @@ DIRECTIONS = ["n", "s", "e", "w", "ne", "nw", "se", "sw"]
 SHOW_FPS = True
 
 def asset(*partial_path):
-    return os.path.join("assets", *partial_path)
+    try:
+        base_path = sys._MEIPASS
+    except:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, "assets", *partial_path)
 
 def load_image(filename):
     return pygame.image.load(asset("images", filename))
