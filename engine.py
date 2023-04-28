@@ -122,6 +122,8 @@ class App:
         if isinstance(scene, Scene):
             if ready:
                 scene.ready()
+                if hasattr(scene, "_ready"):
+                    scene._ready()
 
             self.loop_func = scene.loop
 
@@ -216,9 +218,13 @@ class Menu(Scene):
         if len(self.names) != len(self.scenes):
             raise Exception("`names` and `scenes` must be tuples of the same length")
 
-    def ready(self):
-        """Don't override this unless you know what you're doing!"""
+    def _ready(self):
+        """Override `ready` instead!"""
         self.selected = 0
+
+    def ready(self):
+        """Override this to run things (like music) before your menu!"""
+        pass
 
     def loop(self, key: int):
         """Don't override this unless you know what you're doing!"""
@@ -287,11 +293,14 @@ class Positional:
         self.app = app
         self.x, self.y = pos
 
+        self.hidden = False
+
     def blit(self, pos: tuple = None):
         """Blits the Positional object to the screen where it is"""
-        if not pos:
-            pos = self.x, self.y
-        self.app.screen.blit(self.object, pos)
+        if not self.hidden:
+            if not pos:
+                pos = self.x, self.y
+            self.app.screen.blit(self.object, pos)
 
 
 class Text(Positional):
@@ -340,6 +349,10 @@ class Sprite(Positional):
         elif self.y > self.max_y:
             self.y = self.max_y
 
+    def emit(self, projectile: "Projectile"):
+        """Emits Projectiles"""
+        projectile.x, projectile.y = self.x, self.y
+
 
 class Projectile(Sprite):
     """Projectiles are Sprites that move on their own, with the `velocity` parameter"""
@@ -371,3 +384,30 @@ class Projectile(Sprite):
         else:
             if self.x > self.max_x+5 or self.x < -self.width-5 or self.y > self.max_y+5 or self.y < -self.height-5:
                 del self
+
+
+class Bullet(Projectile):
+    """Bullets are used by players and enemies"""
+    def __init__(self, app: App, shooter: Sprite, *, image: str, pos: tuple = None, velocity: tuple = (0, 0), bounce: bool = False, targets: tuple = None, hits: int = 1, damage: int = None):
+        if not pos:
+            pos = shooter.x, shooter.y
+        
+        super().__init__(app, image=image, pos=pos, velocity=velocity, bounce=bounce)
+
+        self.shooter = shooter
+        self.targets = targets
+        self.damage = damage
+        self.hits = hits
+
+    def check(self):
+        """Checks if the Bullet hit something"""
+        for blit in self.app.blits:
+            if self.x - 5 < blit.x < self.x + 5 and self.y - 5 < blit.y < self.y + 5:
+                if (not self.targets or blit in self.targets) and blit != self.shooter and blit != self:
+                    if hasattr(blit, "take_damage"):
+                        blit.take_damage(self.damage)
+
+                    if self.hits > -1:
+                        self.hits -= 1
+                        if self.hits <= 0:
+                            del self  
