@@ -60,7 +60,7 @@ class Cats(engine.Scene):
             vel_y = random.randint(-10, 10)
 
             projectile = engine.Projectile(self.app, image="catsmirk.png", pos=(x, y), velocity=(vel_x, vel_y), bounce=True)
-            self.app.blits.append(projectile)
+            self.blits.append(projectile)
 
         self.app.play_music("cats")
 
@@ -71,7 +71,7 @@ class Cats(engine.Scene):
 
         self.app.screen.fill((64, 0, 0))
 
-        for sprite in self.app.blits:
+        for sprite in self.blits:
             if isinstance(sprite, engine.Projectile):
                 sprite.step()
 
@@ -84,7 +84,7 @@ class Stage1(engine.Scene):
 
     def ready(self):
         self.player = engine.Sprite(self.app, image="catsmirk.png", pos=(self.app.width//2, self.app.height//3))
-        self.app.blits.append(self.player)
+        self.blits.append(self.player)
         self.app.play_music("gong")
 
     def loop(self, key: int):
@@ -102,7 +102,7 @@ class Stage1(engine.Scene):
             self.player.x += step
         if keys[pygame.K_z]:
             bullet = engine.Bullet(self.app, self.player, image="catsmirk.png", velocity=(0, -10), damage=-1)
-            self.app.blits.append(bullet)
+            self.blits.append(bullet)
             self.player.emit(bullet)
         if keys[pygame.K_ESCAPE]:
             self.app.play_scene(main_menu)
@@ -110,7 +110,7 @@ class Stage1(engine.Scene):
 
         self.player.restrict()
 
-        for item in self.app.blits:
+        for item in self.blits:
             if isinstance(item, engine.Bullet):
                 item.step()
                 item.check()

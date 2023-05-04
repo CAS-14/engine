@@ -184,6 +184,8 @@ class Scene:
         # this stores the object inside the App's scene list, allowing it to be accessed as a string, meaning no errors unless you code it wrong!
         if name: self.app.scenes[name] = self
 
+        self.blits = []
+
         self.initialized = False
 
     def ready(self):
