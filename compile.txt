@@ -1,2 +1,19 @@
-WIN: python -m PyInstaller ../app.py --onefile --add-data ../assets;assets -i ../assets/images/catsmirk.png
-LIN: pyinstaller ../app.py --onefile --add-data ../assets:assets -i ../assets/images/catsmirk.png
+WINDOWS: 
+cd ~/code/bullethell/compile-win
+wine cmd
+start venv/Scripts/activate.bat
+python -m PyInstaller ../game.py --onefile --add-data ../assets;assets -i ../assets/images/catsmirk.png
+start venv/Scripts/deactivate.bat
+^C
+cd ..
+
+LINUX:
+cd ~/code/bullethell
+activate
+cd compile-lin
+pyinstaller ../game.py --onefile --add-data ../assets:assets -i ../assets/images/catsmirk.png
+cd ..
+deactivate
+
+MAC
+...
