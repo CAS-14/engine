@@ -88,18 +88,11 @@ class Stage1(engine.Scene):
         self.app.play_music("gong")
 
     def loop(self, key: int):
-        step = 10
         self.app.screen.fill((0, 15, 64))
         keys = pygame.key.get_pressed()
 
-        if keys[pygame.K_UP]:
-            self.player.y -= step
-        if keys[pygame.K_DOWN]:
-            self.player.y += step
-        if keys[pygame.K_LEFT]:
-            self.player.x -= step
-        if keys[pygame.K_RIGHT]:
-            self.player.x += step
+        engine.KEYS_move(keys, self.player, 10)
+        
         if keys[pygame.K_z]:
             bullet = engine.Bullet(self.app, self.player, image="catsmirk.png", velocity=(0, -10), damage=-1)
             self.blits.append(bullet)
@@ -110,13 +103,7 @@ class Stage1(engine.Scene):
 
         self.player.restrict()
 
-        for item in self.blits:
-            if isinstance(item, engine.Bullet):
-                item.step()
-                item.check()
-
-            if hasattr(item, "blit"):
-                item.blit()
+        engine.AUTO_blit(self.blits)
 
 
 game = MyBulletGame()

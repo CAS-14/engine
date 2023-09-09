@@ -6,6 +6,8 @@ import random
 def _not_looping(key: int):
     print(f"This function should not be called! Key: {key}")
 
+DEFAULT_COLOR = (50, 50, 50)
+
 
 class App:
     """Subclass this to make a game! Override function `ready` if you want something to run before the loop starts. Also, be sure to set the `loop_func` later."""
@@ -44,6 +46,7 @@ class App:
 
         self.texts = []
         self.blits = []
+        self.teams = []
 
         # used for string-referencing scenes and sounds that have not been initialized yet
         self.scenes = {}
@@ -174,6 +177,34 @@ class App:
 
             self.clock.tick(self.framerate)
             pygame.display.flip()
+
+
+class Team:
+    def __init__(self, app: App, name: str, members: list):
+        self.app = app
+        self.name = name
+        self.members = members
+
+        self.enable()
+
+    def enable(self):
+        if self not in self.app.teams:
+            self.app.teams.append(self)
+            return True
+        return False
+
+    def disable(self):
+        if self in self.app.teams:
+            self.app.teams.remove(self)
+            return True
+        return False
+
+    def add_member(self, member):
+        self.members.append(member)
+
+    def add_members(self, members: list):
+        for member in members:
+            self.add_member(member)
 
 
 class Scene:
@@ -307,11 +338,8 @@ class Positional:
 
 class Text(Positional):
     """Text object that can be reused"""
-    def __init__(self, app: App, content: str, *, pos: tuple = (1, 1), color: tuple = None, background: tuple = None, font: pygame.font.Font = None, antialias: bool = True):
+    def __init__(self, app: App, content: str, *, pos: tuple = (1, 1), color: tuple = (30, 10, 100), background: tuple = None, font: pygame.font.Font = None, antialias: bool = True):
         super().__init__(app, pos=pos)
-
-        if not color:
-            color = (30, 10, 100)
 
         self.content = content
         self.color = color
@@ -327,17 +355,34 @@ class Text(Positional):
 
 class Sprite(Positional):
     """Sprites have their own x and y positions and have a function to limit them to the screen edges"""
-    def  __init__(self, app: App, *, image: str, pos: tuple = (1, 1)):
+    def  __init__(self, app: App, *, image: str = None, color: tuple = DEFAULT_COLOR, size: tuple = (20, 20), pos: tuple = (1, 1)):
         super().__init__(app, pos=pos)
 
-        self.object = self.image = self.app.load_image(image)
+        if image:
+            self.object = self.image = self.app.load_image(image)
 
-        self.width = self.image.get_width()
-        self.height = self.image.get_height()
+            self.width = self.image.get_width()
+            self.height = self.image.get_height()
+
+        elif color and size:
+            self.rect = pygame.Rect(pos[0], pos[1], size[0], size[1])
+            self.object = pygame.Surface((self.rect.w, self.rect.h))
+
+            self.width, self.height = size
+
+        else:
+            raise Exception("Sprite must be initialized with either an `image` or a `color` and `size`")
+
         self.size = self.width, self.height
 
         self.max_x = self.app.width - self.width
         self.max_y = self.app.height - self.height
+
+    def get_right(self):
+        return self.x + self.width
+    
+    def get_bottom(self):
+        return self.y + self.height
 
     def restrict(self):
         """If the Sprite has gone beyond the screen edges, teleport it back to the edge"""
@@ -351,6 +396,35 @@ class Sprite(Positional):
         elif self.y > self.max_y:
             self.y = self.max_y
 
+    def move(self, xd: int = 0, yd: int = 0, *, check_collision: bool = True):
+        new_x = self.x + xd
+        new_y = self.y + yd
+        new_r = self.get_right() + xd
+        new_b = self.get_bottom() + yd
+
+        change = True
+
+        if check_collision:
+            for team in self.app.teams:
+                if self in team.members:
+                    for member in team.members:
+                        if isinstance(member, Obstacle):
+                            obs = member
+                            obs_r = obs.get_right()
+                            obs_b = obs.get_bottom()
+
+                            if (
+                                ((new_x < obs_r and new_x > obs.x) or
+                                (new_r > obs.x and new_r < obs_r)) and
+                                ((new_y > obs.y and new_y < obs_b) or
+                                (new_b > obs.y and new_b < obs_b))
+                            ):
+                                change = False
+        
+        if change: 
+            self.x = new_x
+            self.y = new_y
+                            
     def emit(self, projectile: "Projectile"):
         """Emits Projectiles"""
         projectile.x, projectile.y = self.x, self.y
@@ -413,3 +487,33 @@ class Bullet(Projectile):
                         self.hits -= 1
                         if self.hits <= 0:
                             del self  
+
+
+class Obstacle(Sprite):
+    """Obstacles are solid objects that block other Sprites"""
+    def __init__(self, app: App, *, color: tuple = DEFAULT_COLOR, size: tuple = (20, 20), pos: tuple = (1, 1), ):
+        super().__init__(app, color=color, size=size, pos=pos)
+
+
+def KEYS_move(keys: list, player: Sprite, step: int):
+    if keys[pygame.K_UP]:
+        #player.y -= step
+        player.move(0, -step)
+    if keys[pygame.K_DOWN]:
+        #player.y += step
+        player.move(0, step)
+    if keys[pygame.K_LEFT]:
+        #player.x -= step
+        player.move(-step)
+    if keys[pygame.K_RIGHT]:
+        #player.x += step
+        player.move(step)
+
+def AUTO_blit(blits: list):
+    for item in blits:
+        if isinstance(item, Bullet):
+            item.step()
+            item.check()
+
+        if hasattr(item, "blit"):
+            item.blit()
