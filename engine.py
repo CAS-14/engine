@@ -308,6 +308,21 @@ class Menu(Scene):
             text.blit((20, 20))
 
 
+class ObstacleScene(Scene):
+    def __init__(self, app: App, name: str, obstacles: list):
+        super().__init__(app, name)
+        
+        self.obstacles = obstacles
+
+    def load(self):
+        for obstacle in self.obstacles:
+            obstacle.enable()
+    
+    def unload(self):
+        for obstacle in self.obstacles:
+            obstacle.disable()
+
+
 class SceneQuit(Scene):
     def __init__(self, app: App):
         self.app = app
@@ -491,8 +506,8 @@ class Bullet(Projectile):
 
 class Obstacle(Sprite):
     """Obstacles are solid objects that block other Sprites"""
-    def __init__(self, app: App, *, color: tuple = DEFAULT_COLOR, size: tuple = (20, 20), pos: tuple = (1, 1), ):
-        super().__init__(app, color=color, size=size, pos=pos)
+    def __init__(self, scene: Scene, *, color: tuple = DEFAULT_COLOR, size: tuple = (20, 20), pos: tuple = (1, 1), ):
+        super().__init__(scene.app, color=color, size=size, pos=pos)
 
 
 def KEYS_move(keys: list, player: Sprite, step: int):
